@@ -1,127 +1,99 @@
 <div align="center">
-  <h1>🚀 Trabalho 2: Pipeline de Engenharia de Dados</h1>
-  <p><i>Extração de Dados do SQL Server e Ingestão no MinIO utilizando Apache Spark e Delta Lake.</i></p>
-
-  ![Python](https://img.shields.io/badge/python-3.12-blue.svg)
-  ![PySpark](https://img.shields.io/badge/PySpark-3.5.1-orange.svg)
-  ![Delta Lake](https://img.shields.io/badge/Delta_Lake-3.2.0-blue)
-  ![MinIO](https://img.shields.io/badge/MinIO-Object_Storage-red)
-  ![SQL Server](https://img.shields.io/badge/SQL_Server-Docker-lightgrey)
-  ![uv](https://img.shields.io/badge/uv-Package_Manager-magenta.svg)
+  <h1>Trabalho de Pesquisa: Apache Spark com Delta Lake (Simulação de Futebol e VAR)</h1>
 </div>
 
----
+## Descrição
+Este projeto é referente ao trabalho da disciplina de Engenharia de Dados (Arquitetura de Dados). O objetivo é implementar um pipeline de dados *end-to-end* utilizando Apache Spark (PySpark) e demonstrar o funcionamento prático do formato de tabela **Delta Lake**. O projeto simula a ingestão de dados de uma partida de futebol (ex: Flamengo x Vasco), extraindo as informações de um banco de dados relacional (SQL Server), armazenando em um Object Storage (MinIO) estruturado nas camadas *Landing Zone* e *Bronze*, e demonstra a aplicação prática de comandos DML (INSERT, UPDATE e DELETE) simulando as intervenções do Árbitro de Vídeo (VAR).
 
-## 📖 Sobre o Projeto
-
-Este é o segundo trabalho prático da disciplina de **Engenharia de Dados**. O grande objetivo deste repositório é demonstrar a construção de um pipeline de dados *end-to-end* envolvendo a extração de um banco relacional, armazenamento em *Object Storage* e estruturação em camadas *Lakehouse*.
-
-O fluxo de dados consiste em:
-1. Conectar-se a um banco de dados **SQL Server** via PySpark.
-2. Ingerir os dados e salvá-los no formato CSV em uma camada **Landing Zone** no **MinIO** (simulando um AWS S3).
-3. Processar esses arquivos e movê-los para a camada **Bronze**, salvando-os utilizando o formato transacional **Delta Lake**.
-4. Executar operações ACID e testes de manipulação de dados (DML) sobre a tabela Delta.
-
----
-
-## ⚠️ Disclaimer
-
+## Disclaimer ou alertas/avisos
 > [!IMPORTANT]
-> Este projeto possui caráter acadêmico. Todo o ambiente (SQL Server e MinIO) foi configurado para rodar em *containers Docker* visando isolamento, segurança e reprodutibilidade perfeita. O ambiente foi testado nativamente em sistema Linux (Ubuntu/WSL).
+> Este é um projeto acadêmico desenvolvido para fins de avaliação. Todo o ambiente (SQL Server e MinIO) foi configurado para rodar em *containers Docker* visando isolamento. O ambiente foi configurado e testado em um sistema Linux (Ubuntu/WSL) para garantir a total compatibilidade e estabilidade das ferramentas de Engenharia de Dados, conforme recomendado nas aulas.
+> **Dica para usuários de WSL 2:** Ao conectar no banco via JDBC, certifique-se de utilizar `127.0.0.1` ao invés de `localhost` para evitar conflitos de resolução IPv6.
 
----
+## 🛠️ Tecnologias e Pré-requisitos
+Para garantir a reprodutibilidade, utilizamos o gerenciador UV para travar as dependências exatas do projeto e o Docker para a infraestrutura de dados:
 
-## 🏛️ Arquitetura do Pipeline
+- **Docker & Docker Compose:** Orquestração dos serviços base (SQL Server e MinIO).
+- **Java (OpenJDK 11 ou 17):** Necessário para a execução do motor Spark.
+- **Python:** Versão 3.12.
+- **UV:** Gerenciador de pacotes e ambientes virtuais (substituindo Pip/Poetry).
+- **PySpark:** 3.5.1.
+- **Delta Lake:** 3.2.0.
 
-A arquitetura foi desenhada em 4 pilares principais:
+## Instalação
+Siga o roteiro passo a passo abaixo para reproduzir a configuração exata do ambiente:
 
-1. **Origem (Fonte de Dados):** SQL Server isolado em um container Docker.
-2. **Armazenamento (Data Lake):** MinIO, um Object Storage 100% compatível com a API do AWS S3.
-3. **Processamento Engine:** Apache Spark (PySpark) com suporte habilitado ao Delta Lake.
-4. **Ambiente e Dependências:** Gerenciado pelo **UV**, o gerenciador de pacotes ultra-rápido do ecossistema Python.
-
----
-
-## 🛠️ Tecnologias Utilizadas
-
-| Tecnologia | Finalidade |
-| :--- | :--- |
-| **Docker & Docker Compose** | Orquestração dos serviços do SQL Server e do MinIO. |
-| **MinIO** | Servidor de armazenamento de objetos (Landing Zone e Bronze). |
-| **SQL Server** | Banco de dados relacional de origem simulando um sistema transacional (OLTP). |
-| **Python (3.12) + UV** | Linguagem principal e gerenciador de pacotes. |
-| **PySpark (3.5.1)** | Motor de processamento distribuído. |
-| **Delta Lake (3.2.0)** | Formato de tabela Lakehouse garantindo transações ACID. |
-
----
-
-## 📂 Estrutura de Diretórios
-
-```text
-Trabalho2-EngenhariaDados/
-├── data/                  # Diretório local para persistência e logs
-├── docs/                  # Documentação em MkDocs
-├── src/                   # 📓 Cadernos Jupyter contendo a inteligência do pipeline
-│   ├── 00_setup_sqlserver.ipynb       # Preparação das tabelas e carga no SQL Server
-│   ├── 01_sqlserver_to_landing.ipynb  # Extração SQL Server -> MinIO (Landing/CSV)
-│   ├── 02_landing_to_bronze.ipynb     # Processamento Landing -> MinIO (Bronze/Delta)
-│   └── 03_dml_delta.ipynb             # Demonstração de operações ACID e DML no Delta
-├── .env.example           # Modelo do arquivo de variáveis de ambiente
-├── docker-compose.yml     # Orquestração do SQL Server e MinIO
-├── pyproject.toml         # Mapeamento de dependências pelo UV
-└── README.md              # Este documento
+1. **Clone o repositório do projeto:**
+```bash
+git clone https://github.com/bernardosvent/Trabalho2-EngenhariaDados.git
+cd Trabalho2-EngenhariaDados
 ```
 
----
-
-## 🚀 Como Executar o Projeto (Guia Passo-a-Passo)
-
-### 1. Clonar e Preparar Variáveis
-Clone o repositório e crie o seu arquivo de variáveis de ambiente a partir do exemplo fornecido:
+2. **Crie as variáveis de ambiente base:**
 ```bash
-git clone <url-do-repositorio>
-cd Trabalho2-EngenhariaDados
 cp .env.example .env
 ```
 
-### 2. Subir a Infraestrutura Base (Docker)
-Inicie os containers do SQL Server e do MinIO em segundo plano (detached mode):
+3. **Suba a infraestrutura base (SQL Server e MinIO):**
+Antes de iniciar o Spark, inicie os containers em background:
 ```bash
 docker compose up -d
 ```
-> [!TIP]
-> Verifique se os containers estão rodando corretamente utilizando o comando `docker ps`.
 
-### 3. Instalar Dependências e Ativar Ambiente (UV)
-Instale o ecossistema Python e ative o ambiente virtual para poder rodar o PySpark:
+4. **Garanta que o gerenciador UV está instalado:** 
+Caso não tenha o UV, instale-o globalmente utilizando o pipx ou pip:
+```bash
+pip install uv
+```
+
+5. **Instale as dependências e crie o ambiente virtual:** 
+Como estamos utilizando o padrão do UV, as bibliotecas já estão mapeadas no projeto. Para instalar tudo e gerar o ambiente virtual automaticamente, execute:
 ```bash
 uv sync
+```
+
+6. **Ative o ambiente virtual:** 
+Sempre que for trabalhar no projeto, ative o ambiente com o comando:
+```bash
 source .venv/bin/activate
 ```
 
-### 4. Executar os Notebooks
-Para visualizar o código em ação, suba o **Jupyter Lab** e execute a sequência arquitetada:
+## Howto
+Para utilizar o projeto e visualizar as implementações práticas da arquitetura Lakehouse:
+
+1. Com o ambiente virtual ativado e os containers rodando, inicie o servidor do Jupyter Labs executando:
 ```bash
 uv run jupyter lab
 ```
-Dentro da interface web do Jupyter, navegue até a pasta `src/` e execute os cadernos na seguinte ordem:
-1. `00_setup_sqlserver.ipynb`
-2. `01_sqlserver_to_landing.ipynb`
-3. `02_landing_to_bronze.ipynb`
-4. `03_dml_delta.ipynb`
+2. No navegador, acesse a interface do Jupyter e navegue até a pasta `src/`.
+3. Abra e execute os arquivos `.ipynb` na ordem cronológica (de `00` a `03`). Neles você verá a extração dos dados do SQL Server, a conversão para Delta Lake no MinIO e os blocos de código contendo o passo a passo das operações DML (Update, Delete) simulando o VAR.
 
----
+## Testes
+Para rodar a suíte de testes de qualidade de dados ou funções auxiliares do projeto utilizando o framework Pytest, execute no terminal (com o ambiente ativado):
+```bash
+pytest -v
+```
 
-## 📚 Documentação (MkDocs)
+## Documentação
+A documentação teórica completa do projeto foi construída utilizando o MkDocs, contendo:
 
-Assim como em projetos anteriores, a documentação teórica completa do projeto foi construída utilizando o **MkDocs** e aborda conceitos profundos sobre as ferramentas (SQL Server, MinIO e Delta Lake).
+- Contextualização do trabalho e cenário dos dados (Futebol, Fonte de dados).
+- Explicação teórica sobre o Apache Spark (PySpark).
+- Explicação teórica sobre o Delta Lake e operações ACID em Data Lakes.
+- Passos de extração e conversão para as camadas Landing Zone e Bronze.
 
-🌐 **Acesse a documentação web facilmente através do link:**
-[https://bernardosvent.github.io/Trabalho2-EngenhariaDados/](https://bernardosvent.github.io/Trabalho2-EngenhariaDados/)
+Acesse a documentação web: [https://bernardosvent.github.io/Trabalho2-EngenhariaDados/](https://bernardosvent.github.io/Trabalho2-EngenhariaDados/)
 
 *(Alternativamente, para rodar localmente, utilize o comando `uv run mkdocs serve` e acesse http://127.0.0.1:8000).*
 
-<br>
-<div align="center">
-  <p>Desenvolvido para fins acadêmicos. 🚀</p>
-</div>
+## 📚 Referências
+**Fontes Recomendadas**
+- **Canal DataWay BR (YouTube):** Tutoriais práticos sobre Engenharia de Dados, ecossistema Hadoop/Spark e arquiteturas de Lakehouse.
+- **Repositórios de Referência (GitHub - @jlsilva01):**
+  - spark-delta - Configuração do ecossistema Spark com Delta Lake.
+  - spark-iceberg - Configuração do ecossistema Spark com Apache Iceberg.
+
+**Documentação Oficial e Fontes Globais**
+- **Delta Lake Official Documentation** - Guia oficial de arquitetura, cobrindo transações ACID, Time Travel e Schema Enforcement.
+- **Apache Spark Documentation** - Documentação oficial do motor de processamento distribuído utilizado como base para o projeto.
+- **MinIO Documentation** - Referência para configuração de Object Storage local compatível com S3.

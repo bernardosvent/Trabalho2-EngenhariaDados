@@ -4,7 +4,7 @@ theme:
   name: readthedocs
 
 nav:
-  - Contextualização Inicial: index.md
-  - 1. Extração para Landing Zone: req1_extracao.md
-  - 2. Conversão para Delta (Bronze): req2_bronze.md
-  - 3. Operações DML no Delta: req3_dml.md
+  - Contextualização e Cenário: index.md
+  - Apache Spark e PySpark: spark.md
+  - Delta Lake: delta.md
+  - Implementação Prática (CRUD): implementacao.md
