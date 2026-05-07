@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Arquitetura e SQL Server - Pipeline de Dados - SQL Server, MinIO e Delta</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Arquitetura e SQL Server";
+        var mkdocs_page_input_path = "arquitetura.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> Pipeline de Dados - SQL Server, MinIO e Delta
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Contextualização e Cenário</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../spark/">Apache Spark e PySpark</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../delta/">Delta Lake</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../implementacao/">Implementação Prática (CRUD)</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">Pipeline de Dados - SQL Server, MinIO e Delta</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Arquitetura e SQL Server</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="arquitetura-e-sql-server">Arquitetura e SQL Server</h1>
+<h2 id="desenho-da-solucao">Desenho da Solução</h2>
+<p>Nossa arquitetura de dados segue o paradigma de extração e carga assíncrona, separando o processamento transacional (que impacta a aplicação) do processamento analítico (que impacta a tomada de decisão).</p>
+<p>As tecnologias foram cuidadosamente escolhidas para emular um ambiente Cloud <em>on-premise</em>:
+- <strong>Banco de Dados Relacional:</strong> SQL Server (via Docker)
+- <strong>Data Lake (Storage):</strong> MinIO (via Docker)
+- <strong>Motor de Processamento:</strong> Apache Spark (PySpark)
+- <strong>Formato de Tabela Analítico:</strong> Delta Lake</p>
+<h2 id="o-papel-do-sql-server">O Papel do SQL Server</h2>
+<p>O SQL Server atua como nosso banco de dados de origem. Em um cenário corporativo real, ele seria o banco de dados por trás de uma aplicação de vendas, ERP, CRM, etc.</p>
+<p>Para demonstrar este fluxo, preparamos o SQL Server inicialmente no arquivo <code>00_setup_sqlserver.ipynb</code> gerando dados fictícios via PySpark JDBC:</p>
+<pre><code class="language-python"># Inicializa o Spark com o driver JDBC do SQL Server
+spark = SparkSession.builder \
+    .appName(&quot;Setup-SQLServer&quot;) \
+    .config(&quot;spark.jars.packages&quot;, &quot;com.microsoft.sqlserver:mssql-jdbc:12.6.1.jre11&quot;) \
+    .getOrCreate()
+
+# Dados iniciais de uma partida (Simulação: Flamengo x Vasco)
+data = [
+    (1, 101, 10, &quot;Gol&quot;, 15, False),
+    (2, 101, 5, &quot;Cartão Amarelo&quot;, 30, False),
+    (3, 101, 9, &quot;Gol&quot;, 44, False)
+]
+columns = [&quot;id_evento&quot;, &quot;id_partida&quot;, &quot;id_jogador&quot;, &quot;tipo_evento&quot;, &quot;minuto_jogo&quot;, &quot;revisado_var&quot;]
+df_eventos = spark.createDataFrame(data, columns)
+
+# Gravação no banco para emular uma tabela transacional (Produção)
+df_eventos.write.jdbc(url=jdbc_url, table=&quot;fato_evento&quot;, mode=&quot;overwrite&quot;, properties=jdbc_props)
+</code></pre>
+<p>No pipeline seguinte (<code>01_sqlserver_to_landing.ipynb</code>), utilizamos o Apache Spark para conectar diretamente ao banco novamente, ler essas tabelas em sua totalidade, e gravar na nossa <strong>Landing Zone</strong> no MinIO no formato <code>CSV</code>.</p>
+              
+            </div>
+          </div><footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

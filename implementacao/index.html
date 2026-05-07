@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Implementação Prática (CRUD) - Pipeline de Dados - SQL Server, MinIO e Delta</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Implementa\u00e7\u00e3o Pr\u00e1tica (CRUD)";
+        var mkdocs_page_input_path = "implementacao.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> Pipeline de Dados - SQL Server, MinIO e Delta
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Contextualização e Cenário</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../spark/">Apache Spark e PySpark</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../delta/">Delta Lake</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Implementação Prática (CRUD)</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1-modelo-de-dados-tabela-fato_evento">1. Modelo de Dados (Tabela fato_evento)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-insercao-inicial-createinsert">2. Inserção Inicial (Create/Insert)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3-atualizacao-update-a-correcao-do-var">3. Atualização (Update) - A Correção do VAR</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#4-exclusao-delete-gol-anulado">4. Exclusão (Delete) - Gol Anulado</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#5-insercao-insert-append-o-gol-do-titulo">5. Inserção (Insert / Append) - O Gol do Título</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#6-evidencia-de-execucao-o-var-em-acao">6. Evidência de Execução (O VAR em Ação)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#7-por-baixo-dos-panos-arquitetura-delta">7. Por baixo dos panos (Arquitetura Delta)</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">Pipeline de Dados - SQL Server, MinIO e Delta</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Implementação Prática (CRUD)</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="implementacao-pratica-e-operacoes-crud">Implementação Prática e Operações CRUD</h1>
+<p>Para demonstrar o cenário descrito anteriormente na prática, utilizamos a API do PySpark com a biblioteca <code>delta.tables</code> no nosso caderno <code>03_dml_delta.ipynb</code>.</p>
+<h2 id="1-modelo-de-dados-tabela-fato_evento">1. Modelo de Dados (Tabela fato_evento)</h2>
+<p>Nossa tabela de eventos contém os dados estruturados de lances do jogo: <code>id_evento</code>, <code>id_partida</code>, <code>id_jogador</code>, <code>tipo_evento</code>, <code>minuto_jogo</code> e a flag <code>revisado_var</code>.</p>
+<h2 id="2-insercao-inicial-createinsert">2. Inserção Inicial (Create/Insert)</h2>
+<p>O Delta Lake garante que, mesmo em fluxos de alta velocidade, cada registro seja gravado de forma atômica. Nossos dados iniciais da partida são gravados na camada Bronze.</p>
+<pre><code class="language-python"># Dados iniciais da partida (Simulação: Flamengo x Vasco)
+data = [
+    (1, 101, 10, &quot;Gol&quot;, 15, False),             # Gol do camisa 10
+    (2, 101, 5, &quot;Cartão Amarelo&quot;, 30, False),    # Falta do volante
+    (3, 101, 9, &quot;Gol&quot;, 44, False)               # Gol do centroavante
+]
+columns = [&quot;id_evento&quot;, &quot;id_partida&quot;, &quot;id_jogador&quot;, &quot;tipo_evento&quot;, &quot;minuto_jogo&quot;, &quot;revisado_var&quot;]
+
+df_eventos = spark.createDataFrame(data, columns)
+# Escrita já ocorre no passo de conversão para a camada Bronze
+</code></pre>
+<h2 id="3-atualizacao-update-a-correcao-do-var">3. Atualização (Update) - A Correção do VAR</h2>
+<p>O VAR identificou que o primeiro gol não foi do jogador 10, mas sim do jogador 99. Utilizamos a API do Delta para realizar a correção cirúrgica baseada na condição do ID do evento.</p>
+<pre><code class="language-python">from delta.tables import DeltaTable
+
+# Carrega a tabela Delta mapeando o diretório de arquivos
+delta_table = DeltaTable.forPath(spark, &quot;s3a://bronze/eventos_delta&quot;)
+
+# Realiza o UPDATE
+delta_table.update(
+    condition=&quot;id_evento = 1&quot;,
+    set={&quot;id_jogador&quot;: &quot;99&quot;, &quot;revisado_var&quot;: &quot;True&quot;}
+)
+</code></pre>
+<h2 id="4-exclusao-delete-gol-anulado">4. Exclusão (Delete) - Gol Anulado</h2>
+<p>Simulamos a anulação do segundo gol da partida por impedimento do jogador 9 (evento de ID 3).</p>
+<pre><code class="language-python"># Realiza o DELETE com base na condição
+delta_table.delete(condition=&quot;id_evento = 3&quot;)
+</code></pre>
+<h2 id="5-insercao-insert-append-o-gol-do-titulo">5. Inserção (Insert / Append) - O Gol do Título</h2>
+<p>Para completar a tríade de DML, simulamos a inserção de um evento novinho em folha, gerado aos 45 do segundo tempo.</p>
+<pre><code class="language-python"># Inserindo um novo evento no final da partida
+novo_evento = [(4, 101, 7, &quot;Gol&quot;, 90, False)]
+colunas = [&quot;id_evento&quot;, &quot;id_partida&quot;, &quot;id_jogador&quot;, &quot;tipo_evento&quot;, &quot;minuto_jogo&quot;, &quot;revisado_var&quot;]
+
+df_novo = spark.createDataFrame(novo_evento, colunas)
+df_novo.write.format(&quot;delta&quot;).mode(&quot;append&quot;).save(&quot;s3a://bronze/eventos_delta&quot;)
+</code></pre>
+<h2 id="6-evidencia-de-execucao-o-var-em-acao">6. Evidência de Execução (O VAR em Ação)</h2>
+<p>Ao rodar o arquivo <code>03_dml_delta.ipynb</code>, você verá no próprio console do Jupyter que o evento 3 (anulado) foi removido, o jogador do evento 1 foi atualizado com sucesso e um novo evento 4 foi inserido.</p>
+<h2 id="7-por-baixo-dos-panos-arquitetura-delta">7. Por baixo dos panos (Arquitetura Delta)</h2>
+<p>A verdadeira mágica do Delta Lake acontece na pasta <code>_delta_log</code> (dentro do bucket no MinIO). Para cada operação CRUD (o INSERT inicial, o UPDATE, o DELETE e o APPEND final), arquivos JSON são gerados mapeando as transações. Isso prova que os arquivos brutos em Parquet não são sobrescritos cegamente, mas sim versionados de forma segura (Transações ACID e Time Travel).</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../delta/" class="btn btn-neutral float-left" title="Delta Lake"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../delta/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
