@@ -84,7 +84,7 @@ A documentação teórica completa do projeto foi construída utilizando o MkDoc
 
 Acesse a documentação web: [https://bernardosvent.github.io/Trabalho2-EngenhariaDados/](https://bernardosvent.github.io/Trabalho2-EngenhariaDados/)
 
-*(Alternativamente, para rodar localmente, utilize o comando `uv run mkdocs serve` e acesse http://127.0.0.1:8000).*
+*(Para rodar MinIO, acesse (http://127.0.0.1:9001/browser)).*
 
 ## 📚 Referências
 **Fontes Recomendadas**
