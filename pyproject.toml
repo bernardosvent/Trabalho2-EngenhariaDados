@@ -1,0 +1,12 @@
+[project]
+name = "trabalho2-engenharia-dados"
+version = "0.1.0"
+description = "Trabalho 2 de Engenharia de Dados: Extração de DB e Carga no MinIO com Delta Lake"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pyspark==3.5.1",
+    "delta-spark==3.2.0",
+    "jupyterlab>=4.1.0",
+    "mkdocs>=1.5.3",
+]
